@@ -20,7 +20,8 @@ webpush.sendNotification(
 ).then(() => console.log("Notifica inviata."))
   .catch(e => {
     // Non stampare l'errore intero: contiene l'indirizzo privato del telefono.
-    console.error("Invio fallito, codice " + e.statusCode + " " + (e.body || ""));
-    if (e.statusCode === 404 || e.statusCode === 410) console.error("Iscrizione scaduta: tocca 'Ricollega notifiche' e aggiorna il secret.");
-    process.exit(1);
+    console.log("Invio fallito, codice " + e.statusCode + " " + (e.body || ""));
+    // Iscrizione chiusa (promemoria spento dall'app, o scaduta): avvisa senza far fallire ogni sera.
+    if (e.statusCode === 404 || e.statusCode === 410) console.log("::warning::Telefono non iscritto: accendi il promemoria nell'app e aggiorna il secret.");
+    else process.exit(1);
   });

@@ -33,13 +33,15 @@
 <div class="paw"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F2B84B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="10" r="2"/><circle cx="12" cy="7" r="2"/><circle cx="17" cy="10" r="2"/><path d="M12 12c-3 0-6 4-4 6 1 1 3 0 4 0s3 1 4 0c2-2-1-6-4-6Z"/></svg><span>Tieni pianta, foglie cadute e concime fuori dalla portata del cane.</span></div>
 </section>
 <section data-view="notifiche" hidden>
-<header class="head"><span id="kicker">Una volta sola</span><h1>Notifiche</h1></header>
-<div id="active" class="out" hidden><strong>Le notifiche sono attive</strong><span class="mut">Ogni sera, dalle 19 circa, ti ricordo cosa fare.</span></div>
-<ol id="steps"><li><div class="node"><span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9F26B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4Z"/><path d="M10 21h4"/></svg></span></div><div class="info"><div><strong>Consenti le notifiche</strong><small>Tocca il pulsante qui sotto</small></div></div></li><li><div class="node"><span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9F26B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.5"/></svg></span></div><div class="info"><div><strong>Copia il codice</strong><small>È privato: non condividerlo</small></div></div></li><li><div class="node"><span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9F26B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 10h14l-2 10H7Z"/><path d="M12 10V4M12 7c3 0 4-2 4-3-2 0-4 1-4 3Z"/></svg></span></div><div class="info"><div><strong>Salvalo su GitHub</strong><small>Come secret PUSH_CONFIG</small></div></div></li></ol>
-<p id="msg" role="status"></p>
-<div id="out" class="out" hidden><button id="copy" class="amber">Copia il codice</button><textarea id="cfg" readonly aria-label="Codice privato" hidden></textarea><button id="try" class="quiet">Prova sul telefono</button><button id="got" class="quiet">La notifica serale mi è arrivata</button></div>
-<button id="on" class="sap">Attiva notifiche</button>
-<button id="redo" class="quiet" hidden>Rifai il collegamento</button>
+<header class="head"><span>Ogni sera</span><h1>Notifiche</h1></header>
+<p id="msg" role="status" hidden></p>
+<div class="rows">
+<div class="row"><div><label for="daily">Promemoria giornaliero</label><small>Cosa fare per la pianta</small></div><span class="switch"><input id="daily" type="checkbox" role="switch" disabled><span></span></span></div>
+<div class="row"><div><strong>Orario promemoria</strong><small>Fisso, a volte in ritardo</small></div><span class="when">19:17</span></div>
+<div class="row"><div><strong>Prova</strong><small>Su questo telefono</small></div><button id="try" class="quiet" disabled>Invia una prova</button></div>
+</div>
+<div id="out" class="out" hidden><strong>Manca un passaggio</strong><span class="mut">Copia il codice e salvalo su GitHub nel secret PUSH_CONFIG. È privato: non condividerlo.</span><button id="copy" class="amber">Copia il codice</button><textarea id="cfg" readonly aria-label="Codice privato" hidden></textarea><button id="got" class="quiet">L'ho salvato su GitHub</button></div>
+<button id="redo" class="link" hidden>Mostra di nuovo il codice</button>
 <a class="back" href="#oggi">Torna a oggi</a>
 </section>
 </main>

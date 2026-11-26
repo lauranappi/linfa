@@ -58,75 +58,90 @@ const ios = /iPhone|iPad/.test(navigator.userAgent);
 const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 
-if (ios && !standalone) {
-  $("msg").textContent = "Prima aggiungi l'app alla Home: in Safari tocca Condividi, poi “Aggiungi alla schermata Home”. Aprila dall'icona.";
-  $("on").hidden = true;
-} else if (!supported) {
-  $("msg").textContent = "Questo browser non supporta le notifiche push. Su iPhone serve iOS 16.4 o successivo.";
-  $("on").hidden = true;
-} else {
-  $("msg").textContent = "Tocca il pulsante e consenti le notifiche.";
-  const c = read("config");
-  if (c) show(c);
-  checkPush();
-}
-// Collegato = in questo telefono è arrivata una notifica vera (o l'hai confermato tu).
-function paint(ok) {
-  $("active").hidden = $("redo").hidden = !ok;
-  $("steps").hidden = $("msg").hidden = $("on").hidden = ok;
-  $("out").hidden = ok || !read("config");
-  $("kicker").textContent = ok ? "Tutto collegato" : "Una volta sola";
-}
-function show(config) {
-  $("cfg").value = JSON.stringify(config);
-  $("on").textContent = "Ricollega notifiche";
-  $("on").className = "quiet";
-  $("msg").textContent = "Salva il codice su GitHub. Alla prima notifica serale questa pagina si riordina da sola.";
-  paint(false);
-}
-async function checkPush() {
-  if (!read("config") || Notification.permission === "denied") return;
-  try { if (await caches.match("push-ok")) write("ok", true); } catch (e) {}
-  if (read("ok")) paint(true);
+const say = text => { $("msg").textContent = text; $("msg").hidden = !text; };
+const ready = supported && !(ios && !standalone);
+let busy = false;
+
+// ok = il codice è già su GitHub (l'hai confermato tu, o è arrivata una notifica vera).
+function paint(on, ok) {
+  $("daily").checked = on;
+  $("try").disabled = !on;
+  $("out").hidden = !on || ok;
+  $("redo").hidden = !on || !ok;
+  if (on) $("cfg").value = JSON.stringify(read("config"));
 }
 async function forgetPush() {
   write("ok", false);
+  $("copy").textContent = "Copia il codice";
   try { await (await caches.open("linfa-state")).delete("push-ok"); } catch (e) {}
 }
-$("got").onclick = () => { write("ok", true); paint(true); };
-$("redo").onclick = async () => { await forgetPush(); paint(false); };
-
-$("on").onclick = async () => {
+// L'interruttore mostra lo stato vero: acceso solo se il telefono è iscritto.
+async function refresh() {
+  if (!ready || busy) return;
   try {
-    // La richiesta di permesso deve partire direttamente dal tocco.
-    if (await Notification.requestPermission() !== "granted") { $("msg").textContent = "Permesso negato: attivalo in Impostazioni > Notifiche."; return; }
-    await navigator.serviceWorker.register("sw.js");
-    const reg = await navigator.serviceWorker.ready;
-    let config = read("config");
-    if (!config) {
-      const old = await reg.pushManager.getSubscription();
-      if (old) await old.unsubscribe();
-      config = await makeKeys();
+    const sub = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
+    const config = read("config");
+    const on = !!(config && sub && Notification.permission === "granted");
+    if (on && sub.endpoint !== config.subscription.endpoint) {
+      write("config", { ...config, subscription: sub.toJSON() });
+      await forgetPush();
     }
-    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytes(config.publicKey) });
-    config = { publicKey: config.publicKey, privateKey: config.privateKey, subscription: sub.toJSON() };
-    const saved = write("config", config);
-    await forgetPush();
-    show(config);
-    if (!saved) { $("out").hidden = false; $("cfg").hidden = false; }
-    $("copy").textContent = "Copia il codice";
-    $("msg").textContent = saved ? "Permesso concesso. Ora copia il codice." : "Permesso concesso, ma copia subito il codice: non riesco a conservarlo.";
-  } catch (e) { $("msg").textContent = "Attivazione non riuscita: " + e.message; }
+    if (await caches.match("push-ok")) write("ok", true);
+    if (!busy) paint(on, !!read("ok"));
+  } catch (e) {}
+}
+async function turnOn() {
+  // La richiesta di permesso deve partire direttamente dal tocco.
+  if (await Notification.requestPermission() !== "granted") throw new Error("Le notifiche sono bloccate: abilitale in Impostazioni > Notifiche.");
+  await navigator.serviceWorker.register("sw.js");
+  const reg = await navigator.serviceWorker.ready;
+  let config = read("config"), sub = await reg.pushManager.getSubscription();
+  if (!config) {
+    if (sub) await sub.unsubscribe();
+    sub = null;
+    config = await makeKeys();
+  }
+  sub = sub || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytes(config.publicKey) });
+  const subscription = sub.toJSON();
+  if (config.subscription?.endpoint !== subscription.endpoint) await forgetPush();
+  config = { publicKey: config.publicKey, privateKey: config.privateKey, subscription };
+  const saved = write("config", config);
+  paint(true, !!read("ok"));
+  $("cfg").value = JSON.stringify(config);
+  if (!saved) { $("cfg").hidden = false; say("Copia subito il codice: non riesco a conservarlo."); }
+}
+async function turnOff() {
+  const sub = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
+  if (sub) await sub.unsubscribe();
+  await forgetPush();
+  paint(false, false);
+  say("Promemoria spento. Se lo riaccendi, salva su GitHub il codice nuovo.");
+}
+
+if (!ready) {
+  say("Questo dispositivo non supporta le notifiche. Su iPhone installa prima l'app dalla schermata Home.");
+} else {
+  $("daily").disabled = false;
+  refresh();
+}
+$("daily").onchange = async () => {
+  const wanted = $("daily").checked;
+  busy = true; $("daily").disabled = true; say("");
+  try { await (wanted ? turnOn() : turnOff()); }
+  catch (e) { $("daily").checked = !wanted; say(e.message || "Qualcosa è andato storto, riprova."); }
+  finally { busy = false; $("daily").disabled = false; }
 };
+$("got").onclick = () => { write("ok", true); say(""); paint(true, true); };
+$("redo").onclick = async () => { await forgetPush(); paint(true, false); };
 $("try").onclick = async () => {
   try {
     const reg = await navigator.serviceWorker.ready;
-    await reg.showNotification("Linfa", { body: "Prova riuscita sul telefono.", icon: "icon-192-v2.png" });
-  } catch (e) { $("msg").textContent = "Prova non riuscita: " + e.message; }
+    await reg.showNotification("Prova", { body: "Le notifiche funzionano. Ti ricorderò come curare la pianta.", icon: "icon-192-v2.png", tag: "prova" });
+  } catch (e) { say("Prova non riuscita: " + e.message); }
 };
 $("copy").onclick = async () => {
   try { await navigator.clipboard.writeText($("cfg").value); $("copy").textContent = "Copiato"; }
-  catch (e) { $("cfg").hidden = false; $("cfg").select(); $("msg").textContent = "Copia a mano il testo selezionato."; }
+  catch (e) { $("cfg").hidden = false; $("cfg").select(); say("Copia a mano il testo selezionato."); }
 };
 render();
 route();
@@ -158,5 +173,5 @@ async function aggiornaApp() {
   } catch (e) { /* senza service worker basta ricaricare */ }
   location.reload();
 }
-document.addEventListener("visibilitychange", () => { if (!document.hidden) { render(); if (supported) checkPush(); } });
-if (supported) navigator.serviceWorker.addEventListener("message", e => { if (e.data === "push-ok") checkPush(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { render(); refresh(); } });
+if (supported) navigator.serviceWorker.addEventListener("message", e => { if (e.data === "push-ok") refresh(); });
