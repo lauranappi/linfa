@@ -121,7 +121,7 @@ $("on").onclick = async () => {
 $("try").onclick = async () => {
   try {
     const reg = await navigator.serviceWorker.ready;
-    await reg.showNotification("Linfa", { body: "Prova riuscita sul telefono.", icon: "icon-192.png" });
+    await reg.showNotification("Linfa", { body: "Prova riuscita sul telefono.", icon: "icon-192-v2.png" });
   } catch (e) { $("msg").textContent = "Prova non riuscita: " + e.message; }
 };
 $("copy").onclick = async () => {
