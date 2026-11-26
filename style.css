@@ -2,12 +2,18 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{background:var(--night);color-scheme:dark}
-body{margin:0 auto;max-width:480px;color:var(--txt);font:400 15px/1.45 'DM Sans',system-ui,sans-serif;padding:env(safe-area-inset-top) 0 calc(100px + env(safe-area-inset-bottom))}
+html,body{height:100%;overflow:hidden}
+body{margin:0 auto;max-width:480px;display:flex;flex-direction:column;height:100dvh;color:var(--txt);font:400 15px/1.45 'DM Sans',system-ui,sans-serif;padding-top:env(safe-area-inset-top)}
+main{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:20px}
+/* App installata su iPhone: solo 100vh arriva fino al bordo inferiore dello schermo. */
+@media (display-mode:standalone){html,body{height:100vh}}
 section{display:flex;flex-direction:column;gap:14px;padding:0 24px}
 h1,h2,.logo,.when,.tile b,.action strong{font-family:'Bricolage Grotesque','DM Sans',sans-serif}
 h1{margin:0;font-size:36px;line-height:1.05;letter-spacing:-.03em}
 h2{margin:0;font-size:17px}
 a{color:var(--sap)}
+a,button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+nav{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .mut,small{font-size:13px;color:var(--mut)}
 .top{display:flex;justify-content:space-between;align-items:center;padding-top:20px}
 .logo{font-size:26px;font-weight:700;letter-spacing:-.04em}.logo i{font-style:normal;color:var(--sap)}
@@ -39,7 +45,8 @@ li:not(:last-child) .node::after{content:"";width:2px;flex:1;background:var(--li
 #msg{margin:0;font-size:14px;color:var(--sap)}
 .out{background:var(--surf);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:10px}
 textarea{width:100%;height:96px;border:1px dashed var(--line);border-radius:12px;padding:12px;background:var(--night);color:var(--mut);font:12px monospace}
+.out strong{font-size:17px}
 .back{min-height:44px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700}
-nav{position:fixed;left:0;right:0;bottom:0;max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--night);border-top:1px solid var(--line);padding:8px 16px calc(8px + env(safe-area-inset-bottom))}
+nav{flex:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--line);padding:6px 16px max(8px,calc(env(safe-area-inset-bottom) - 12px))}
 nav a{min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-decoration:none;font-size:12px;font-weight:700;color:var(--mut)}
 nav a[aria-current]{color:var(--sap)}

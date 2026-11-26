@@ -44,7 +44,7 @@ function route() {
   const name = views.some(v => "#" + v.dataset.view === location.hash) ? location.hash.slice(1) : "oggi";
   views.forEach(v => v.hidden = v.dataset.view !== name);
   document.querySelectorAll("[data-nav]").forEach(a => a.dataset.nav === name ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
-  scrollTo(0, 0);
+  document.querySelector("main").scrollTop = 0;
 }
 
 const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -67,9 +67,34 @@ if (ios && !standalone) {
 } else {
   $("msg").textContent = "Tocca il pulsante e consenti le notifiche.";
   const c = read("config");
-  if (c) { show(c); $("on").textContent = "Ricollega notifiche"; }
+  if (c) show(c);
+  checkPush();
 }
-function show(config) { $("cfg").value = JSON.stringify(config); $("out").hidden = false; $("try").hidden = false; }
+// Collegato = in questo telefono è arrivata una notifica vera (o l'hai confermato tu).
+function paint(ok) {
+  $("active").hidden = $("redo").hidden = !ok;
+  $("steps").hidden = $("msg").hidden = $("on").hidden = ok;
+  $("out").hidden = ok || !read("config");
+  $("kicker").textContent = ok ? "Tutto collegato" : "Una volta sola";
+}
+function show(config) {
+  $("cfg").value = JSON.stringify(config);
+  $("on").textContent = "Ricollega notifiche";
+  $("on").className = "quiet";
+  $("msg").textContent = "Salva il codice su GitHub. Alla prima notifica serale questa pagina si riordina da sola.";
+  paint(false);
+}
+async function checkPush() {
+  if (!read("config") || Notification.permission === "denied") return;
+  try { if (await caches.match("push-ok")) write("ok", true); } catch (e) {}
+  if (read("ok")) paint(true);
+}
+async function forgetPush() {
+  write("ok", false);
+  try { await (await caches.open("linfa-state")).delete("push-ok"); } catch (e) {}
+}
+$("got").onclick = () => { write("ok", true); paint(true); };
+$("redo").onclick = async () => { await forgetPush(); paint(false); };
 
 $("on").onclick = async () => {
   try {
@@ -86,10 +111,11 @@ $("on").onclick = async () => {
     const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytes(config.publicKey) });
     config = { publicKey: config.publicKey, privateKey: config.privateKey, subscription: sub.toJSON() };
     const saved = write("config", config);
+    await forgetPush();
     show(config);
-    $("on").textContent = "Ricollega notifiche";
-    $("copy").textContent = "Copia";
-    $("msg").textContent = saved ? "Permesso concesso." : "Permesso concesso, ma copia subito il testo: non riesco a conservarlo.";
+    if (!saved) { $("out").hidden = false; $("cfg").hidden = false; }
+    $("copy").textContent = "Copia il codice";
+    $("msg").textContent = saved ? "Permesso concesso. Ora copia il codice." : "Permesso concesso, ma copia subito il codice: non riesco a conservarlo.";
   } catch (e) { $("msg").textContent = "Attivazione non riuscita: " + e.message; }
 };
 $("try").onclick = async () => {
@@ -100,9 +126,18 @@ $("try").onclick = async () => {
 };
 $("copy").onclick = async () => {
   try { await navigator.clipboard.writeText($("cfg").value); $("copy").textContent = "Copiato"; }
-  catch (e) { $("cfg").select(); $("msg").textContent = "Copia a mano il testo selezionato."; }
+  catch (e) { $("cfg").hidden = false; $("cfg").select(); $("msg").textContent = "Copia a mano il testo selezionato."; }
 };
 render();
 route();
 addEventListener("hashchange", route);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
+// Le voci del menu cambiano vista senza navigare: toccarle di nuovo non ricarica nulla.
+document.addEventListener("click", e => {
+  const a = e.target.closest('a[href^="#"]');
+  if (!a) return;
+  e.preventDefault();
+  history.replaceState(null, "", a.getAttribute("href"));
+  route();
+});
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { render(); if (supported) checkPush(); } });
+if (supported) navigator.serviceWorker.addEventListener("message", e => { if (e.data === "push-ok") checkPush(); });
