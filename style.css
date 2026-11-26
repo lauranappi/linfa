@@ -1,0 +1,45 @@
+:root{--night:#0F1622;--surf:#19233A;--line:#2B3754;--txt:#F3F6EC;--mut:#AEBBD0;--sap:#C9F26B;--amb:#F2B84B}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--night);color-scheme:dark}
+body{margin:0 auto;max-width:480px;color:var(--txt);font:400 15px/1.45 'DM Sans',system-ui,sans-serif;padding:env(safe-area-inset-top) 0 calc(100px + env(safe-area-inset-bottom))}
+section{display:flex;flex-direction:column;gap:14px;padding:0 24px}
+h1,h2,.logo,.when,.tile b,.action strong{font-family:'Bricolage Grotesque','DM Sans',sans-serif}
+h1{margin:0;font-size:36px;line-height:1.05;letter-spacing:-.03em}
+h2{margin:0;font-size:17px}
+a{color:var(--sap)}
+.mut,small{font-size:13px;color:var(--mut)}
+.top{display:flex;justify-content:space-between;align-items:center;padding-top:20px}
+.logo{font-size:26px;font-weight:700;letter-spacing:-.04em}.logo i{font-style:normal;color:var(--sap)}
+.bell{width:44px;height:44px;border-radius:16px;background:var(--surf);display:flex;align-items:center;justify-content:center}
+.tree{display:flex;justify-content:center}
+.hello{display:flex;flex-direction:column;gap:2px}.hello h1{font-size:30px}
+.head{display:flex;flex-direction:column;gap:4px;padding:36px 0 6px}.head span{font-size:13px;font-weight:500;color:var(--sap)}
+#today{display:flex;flex-direction:column;gap:10px}
+.action{display:flex;align-items:center;gap:12px;border-radius:22px;padding:14px 14px 14px 18px;background:var(--sap);color:var(--night)}
+.action div{flex:1;display:flex;flex-direction:column}.action strong{font-size:19px}.action span{font-size:13px}
+.action.done{background:var(--surf);color:var(--txt)}
+button{border:0;border-radius:16px;min-height:52px;padding:0 24px;font:700 15px 'DM Sans',system-ui,sans-serif;cursor:pointer}
+.action button{background:var(--night);color:var(--txt)}.action.done button{background:var(--line)}
+button.sap{background:var(--sap);color:var(--night)}button.amber{background:var(--amb);color:var(--night)}button.quiet{background:var(--line);color:var(--txt)}
+:focus-visible{outline:2px solid var(--amb);outline-offset:2px}
+ol{list-style:none;margin:0;padding:0}
+li{display:flex;gap:14px}
+.node{display:flex;flex-direction:column;align-items:center;color:var(--sap)}
+.node span{width:40px;height:40px;flex:none;border-radius:50% 50% 50% 12px;background:var(--surf);display:flex;align-items:center;justify-content:center}
+li:not(:last-child) .node::after{content:"";width:2px;flex:1;background:var(--line)}
+.info{flex:1;display:flex;justify-content:space-between;gap:10px;padding:2px 0 20px}li:last-child .info{padding-bottom:0}
+.info div{display:flex;flex-direction:column}.info strong{font-size:15.5px}
+.when{font-size:14px;font-weight:700;color:var(--sap);white-space:nowrap}
+#season .node,#season .when{color:var(--amb)}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.tile{background:var(--surf);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:6px;font-size:13px}
+.tile b{font-size:26px;line-height:1.1;color:var(--sap)}
+.paw{display:flex;align-items:center;gap:14px;border:1px solid var(--amb);border-radius:22px;padding:16px;font-size:13.5px}.paw svg{flex:none}
+#msg{margin:0;font-size:14px;color:var(--sap)}
+.out{background:var(--surf);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:10px}
+textarea{width:100%;height:96px;border:1px dashed var(--line);border-radius:12px;padding:12px;background:var(--night);color:var(--mut);font:12px monospace}
+.back{min-height:44px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700}
+nav{position:fixed;left:0;right:0;bottom:0;max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--night);border-top:1px solid var(--line);padding:8px 16px calc(8px + env(safe-area-inset-bottom))}
+nav a{min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-decoration:none;font-size:12px;font-weight:700;color:var(--mut)}
+nav a[aria-current]{color:var(--sap)}

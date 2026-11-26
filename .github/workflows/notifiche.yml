@@ -1,0 +1,31 @@
+name: Notifiche Linfa
+on:
+  schedule:
+    - cron: "17 19 * * *"
+      timezone: "Europe/Rome"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  invia:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+        working-directory: notify
+      - run: node notify/send.js
+        env:
+          PUSH_CONFIG: ${{ secrets.PUSH_CONFIG }}
+      # GitHub spegne le pianificazioni dei repository pubblici fermi da 60 giorni.
+      - name: Mantieni attivo il repository
+        if: always()
+        run: |
+          if [ $(( $(date +%s) - $(git log -1 --format=%ct) )) -gt $(( 45 * 86400 )) ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "Mantieni attive le notifiche"
+            git push
+          fi
