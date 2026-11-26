@@ -39,13 +39,12 @@ function action(k, day) {
   return card;
 }
 function render() {
-  const day = today(), noon = noonOf(day), due = Bonsai.due(day), name = plantName(), her = name || "lei";
+  const day = today(), noon = noonOf(day), due = Bonsai.due(day);
   const together = Math.max(1, daysBetween(read("dal") || day, day) + 1);
   $("date").textContent = new Date().toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" }).replace(/^./, c => c.toUpperCase()) + " · insieme da " + (together === 1 ? "1 giorno" : together + " giorni");
   const open = due.filter(k => !isDone(k, day)).length;
-  $("hello").textContent = !open ? "Per oggi è tutto." : open === 1 ? "Un gesto per " + her + "." : open + " gesti per " + her + ".";
+  $("hello").textContent = !open ? "Per oggi è tutto." : open === 1 ? "Un gesto per lei." : open + " gesti per lei.";
   $("today").replaceChildren(...due.map(k => action(k, day)));
-  $("plant-title").textContent = name || "La tua pianta";
   $("now-title").textContent = Guide.now().t; $("now-sub").textContent = Guide.now().short;
   const upcoming = Bonsai.TASKS.filter(k => !due.includes(k)).map(k => ({ k, n: Bonsai.next(k, day) })).sort((a, b) => a.n - b.n);
   $("soon").replaceChildren(...upcoming.slice(0, 2).map(x => item(x.k, x.k.short, when(x.n, day))));
@@ -96,9 +95,8 @@ window.pour = () => {
 };
 $("tree").onclick = () => replay(crown, "rustle");
 
-// Nome e data: restano sul telefono.
-function fillAbout() { $("p-name").value = plantName(); $("p-since").value = read("dal"); $("p-since").max = today(); }
-$("p-name").oninput = () => { write("nome", $("p-name").value.slice(0, 20)); render(); };
+// Da quando è con te: resta sul telefono.
+function fillAbout() { $("p-since").value = read("dal"); $("p-since").max = today(); }
 $("p-since").onchange = () => { if (isDay($("p-since").value) && $("p-since").value <= today()) { write("dal", $("p-since").value); render(); } };
 window.reloadData = () => { done = read("done") || {}; fillAbout(); render(); };
 

@@ -9,4 +9,3 @@ const noonOf = day => new Date(day + "T12:00:00Z");
 const daysBetween = (a, b) => Math.round((noonOf(b) - noonOf(a)) / 864e5);
 const shift = (day, n) => new Date(+noonOf(day) + n * 864e5).toISOString().slice(0, 10);
 const fmt = (day, o) => noonOf(day).toLocaleDateString("it-IT", { ...o, timeZone: "UTC" });
-const plantName = () => (read("nome") || "").trim();

@@ -172,7 +172,7 @@
       say("Preparo la copia…");
       const foto = [];
       for (const p of await photos()) foto.push({ id: p.id, day: p.day, note: p.note, img: await toData(blobOf(p)) });
-      const json = JSON.stringify({ app: "linfa", v: 1, day: today(), data: { done: read("done") || {}, water: log(), nome: plantName(), dal: read("dal") }, foto });
+      const json = JSON.stringify({ app: "linfa", v: 1, day: today(), data: { done: read("done") || {}, water: log(), dal: read("dal") }, foto });
       copy = new File([json], "linfa-copia-" + today() + ".json", { type: "application/json" });
       $("b-save").hidden = false; say("Copia pronta: " + (foto.length === 1 ? "1 foto" : foto.length + " foto") + ". Ora salvala in File.");
     } catch (e) { say("Copia non riuscita."); }
@@ -208,7 +208,6 @@
       const done = read("done") || {};
       for (const [k, v] of Object.entries(d.done || {})) if (Bonsai.TASKS.some(t => t.id === k) && isDay(v) && !(done[k] > v)) done[k] = v;
       write("done", done);
-      if (typeof d.nome === "string" && d.nome.trim()) write("nome", d.nome.trim().slice(0, 20));
       if (isDay(d.dal)) write("dal", d.dal);
       incoming = null; $("b-apply").hidden = true; say("Fatto: i tuoi dati sono tornati.");
       window.reloadData?.();
