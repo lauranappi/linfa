@@ -17,4 +17,5 @@ PWA per la cura del bonsai, con una notifica ogni sera verso le 19:17.
 - Orario: riga `cron` in `.github/workflows/notifiche.yml` (minuti e ora italiana).
 - Frequenze: `tasks.js`.
 - "Fatto" resta sul telefono e non ferma le notifiche.
+- Doppio tocco su "Oggi": ricarica l'app e prende la versione nuova.
 - Se non arrivano più: guarda la scheda Actions. Se serve, "Rifai il collegamento" (o "Ricollega notifiche") e aggiorna il secret.

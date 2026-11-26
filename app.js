@@ -131,13 +131,32 @@ $("copy").onclick = async () => {
 render();
 route();
 addEventListener("hashchange", route);
-// Le voci del menu cambiano vista senza navigare: toccarle di nuovo non ricarica nulla.
+// Le voci del menu cambiano vista senza navigare.
 document.addEventListener("click", e => {
   const a = e.target.closest('a[href^="#"]');
   if (!a) return;
   e.preventDefault();
   history.replaceState(null, "", a.getAttribute("href"));
   route();
+  if (a.dataset.nav === "oggi") doppioTocco(a);
 });
+
+// Doppio tocco su Oggi (entro 0,6 secondi): rotellina, poi ricarica per prendere la versione nuova.
+let ultimoTocco = 0, aggiorno = false;
+function doppioTocco(a) {
+  const adesso = Date.now(), doppio = adesso - ultimoTocco < 600;
+  ultimoTocco = doppio ? 0 : adesso;
+  if (!doppio || aggiorno) return;
+  aggiorno = true;
+  a.querySelector("svg").outerHTML = '<svg class="gira" width="20" height="20" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Aggiorno"><path d="M12.5 7A5.5 5.5 0 1 1 9.9 2.3"/><path d="M12.5 2.5v3.2H9.3"/></svg>';
+  setTimeout(aggiornaApp, 480);
+}
+async function aggiornaApp() {
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration();
+    if (reg) await Promise.race([reg.update(), new Promise(r => setTimeout(r, 2500))]);
+  } catch (e) { /* senza service worker basta ricaricare */ }
+  location.reload();
+}
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { render(); if (supported) checkPush(); } });
 if (supported) navigator.serviceWorker.addEventListener("message", e => { if (e.data === "push-ok") checkPush(); });
