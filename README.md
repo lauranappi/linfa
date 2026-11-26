@@ -11,7 +11,16 @@ PWA per la cura del bonsai, con una notifica ogni sera verso le 19:17.
    Nome `PUSH_CONFIG`, valore il testo copiato. Non salvarlo in nessun file.
 5. Actions > Notifiche Linfa > Run workflow. Deve arrivarti la notifica.
 
+## Cosa fa
+
+- **Oggi**: i gesti del giorno, il periodo dell'anno, "Qualcosa non va?".
+- **Diario**: annaffiature e foto.
+- **Calendario** e **La pianta**: ritmo delle cure, stagioni, "Se parti", copia di sicurezza.
+- Testi delle guide in `guide.js`.
+
 ## Da sapere
+
+- Foto e diario restano solo sul telefono: rimuovendo l'app si cancellano. Fai una copia da "La pianta".
 
 - GitHub può far partire le pianificazioni in ritardo, a volte anche di parecchio.
 - Orario: riga `cron` in `.github/workflows/notifiche.yml` (minuti e ora italiana).
