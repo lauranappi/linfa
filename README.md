@@ -12,16 +12,22 @@ PWA per la cura del bonsai, con un promemoria ogni giorno all'ora che scegli.
 
 - **Oggi**: i gesti del giorno, il periodo dell'anno, "Qualcosa non va?".
 - **Diario**: annaffiature e foto.
-- **Calendario** e **La pianta**: ritmo delle cure, stagioni, "Se parti", copia di sicurezza.
+- **Calendario** e **La pianta**: ritmo delle cure, stagioni, "Se parti", salvataggio online.
 - Testi delle guide in `guide.js`.
 
 ## Da sapere
 
-- Foto e diario restano solo sul telefono: rimuovendo l'app si cancellano. Fai una copia da "La pianta".
+- Foto e diario stanno sul telefono; con "I tuoi dati" (La pianta) si salvano anche online.
 
 - Frequenze: `tasks.js` (copialo anche in `supabase/functions/promemoria/` e ripubblica la funzione).
 - "Fatto" resta sul telefono e non ferma le notifiche.
 - Doppio tocco su "Oggi": ricarica l'app e prende la versione nuova.
+
+## Salvataggio online
+
+- Funzione `dati` sullo stesso progetto Supabase: un solo account (email ammessa inserita a mano nel database).
+- Password salvata solo come hash; foto e diario in tabelle non esposte dall'API.
+- Password dimenticata: svuota `privato.account` e `privato.sessioni`, poi rientra dall'app scegliendone una nuova.
 
 ## Notifiche
 

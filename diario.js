@@ -1,4 +1,4 @@
-// Diario: annaffiature (localStorage), foto (IndexedDB) e copia di sicurezza. Tutto resta sul telefono.
+// Diario: annaffiature (localStorage) e foto (IndexedDB). Il salvataggio online è in nuvola.js.
 (function () {
   // ---------- Acqua ----------
   const log = () => { const l = read("water"); return l && typeof l === "object" ? l : {}; };
@@ -152,68 +152,17 @@
       const buf = await draft.blob.arrayBuffer();
       await store("readwrite", s => s.put({ id: Date.now() + "-" + Math.random().toString(36).slice(2, 8), day, note: $("f-note").value.trim().slice(0, 200), buf }));
       navigator.storage?.persist?.().catch(() => {});
-      closeDraft(); note("");
+      closeDraft(); note(""); window.Nuvola?.cambia();
     } catch (e) { note("Salvataggio non riuscito: forse lo spazio è finito."); }
     $("f-save").disabled = false; paintPhotos();
   };
   $("f-back").onclick = () => { open = null; paintPhotos(); };
   $("f-del").onclick = async () => {
     if (!$("f-del").dataset.sure) { $("f-del").dataset.sure = "1"; $("f-del").textContent = "Tocca ancora per eliminare"; return; }
-    try { await store("readwrite", s => s.delete(open)); open = null; note(""); } catch (e) { note("Eliminazione non riuscita."); }
+    try { const id = open; await store("readwrite", s => s.delete(id)); window.Nuvola?.tolta(id); open = null; note(""); } catch (e) { note("Eliminazione non riuscita."); }
     paintPhotos();
   };
 
-  // ---------- Copia di sicurezza (senza i dati delle notifiche) ----------
-  const say = text => { $("b-msg").textContent = text; $("b-msg").hidden = !text; };
-  const toData = blob => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(blob); });
-  let copy = null, incoming = null;
-  $("b-make").onclick = async () => {
-    try {
-      say("Preparo la copia…");
-      const foto = [];
-      for (const p of await photos()) foto.push({ id: p.id, day: p.day, note: p.note, img: await toData(blobOf(p)) });
-      const json = JSON.stringify({ app: "linfa", v: 1, day: today(), data: { done: read("done") || {}, water: log(), dal: read("dal") }, foto });
-      copy = new File([json], "linfa-copia-" + today() + ".json", { type: "application/json" });
-      $("b-save").hidden = false; say("Copia pronta: " + (foto.length === 1 ? "1 foto" : foto.length + " foto") + ". Ora salvala in File.");
-    } catch (e) { say("Copia non riuscita."); }
-  };
-  // Il salvataggio parte subito dal tocco, come chiede iPhone.
-  $("b-save").onclick = () => {
-    if (!copy) return;
-    if (navigator.canShare && navigator.canShare({ files: [copy] })) { navigator.share({ files: [copy] }).catch(() => {}); return; }
-    const a = el("a"), u = URL.createObjectURL(copy); a.href = u; a.download = copy.name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000);
-  };
-  const goodPhoto = p => p && typeof p.id === "string" && isDay(p.day) && typeof p.img === "string" && p.img.startsWith("data:image/jpeg;base64,");
-  $("b-file").onchange = async () => {
-    const f = $("b-file").files[0]; $("b-file").value = ""; if (!f) return;
-    try {
-      const j = JSON.parse(await f.text());
-      if (j.app !== "linfa" || !j.data || !Array.isArray(j.foto)) throw new Error();
-      incoming = j; $("b-apply").hidden = false;
-      say("Copia del " + (isDay(j.day) ? longDay(j.day) : "?") + ": " + j.foto.filter(goodPhoto).length + " foto, " + Object.keys(j.data.water || {}).length + " giorni di acqua. I giorni uguali vengono sostituiti.");
-    } catch (e) { incoming = null; $("b-apply").hidden = true; say("Questo file non è una copia di Linfa."); }
-  };
-  $("b-apply").onclick = async () => {
-    if (!incoming) return;
-    $("b-apply").disabled = true;
-    try {
-      const d = incoming.data;
-      for (const p of incoming.foto.filter(goodPhoto)) {
-        const buf = Uint8Array.from(atob(p.img.slice(p.img.indexOf(",") + 1)), c => c.charCodeAt(0)).buffer;
-        await store("readwrite", s => s.put({ id: p.id, day: p.day, note: String(p.note || "").slice(0, 200), buf }));
-      }
-      const water = log();
-      for (const [k, v] of Object.entries(d.water || {})) if (isDay(k) && (v === "w" || v === "u")) water[k] = v;
-      write("water", water);
-      const done = read("done") || {};
-      for (const [k, v] of Object.entries(d.done || {})) if (Bonsai.TASKS.some(t => t.id === k) && isDay(v) && !(done[k] > v)) done[k] = v;
-      write("done", done);
-      if (isDay(d.dal)) write("dal", d.dal);
-      incoming = null; $("b-apply").hidden = true; say("Fatto: i tuoi dati sono tornati.");
-      window.reloadData?.();
-    } catch (e) { say("Ripristino non riuscito a metà: riprova con lo stesso file."); }
-    $("b-apply").disabled = false;
-  };
-
   window.Diario = { show };
+  window.Foto = { tutte: photos, metti: p => store("readwrite", s => s.put(p)), cancella: id => store("readwrite", s => s.delete(id)) };
 })();
