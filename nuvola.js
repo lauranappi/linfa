@@ -1,4 +1,4 @@
-// Salvataggio online: diario e foto vanno sul server da soli, dopo un accesso con email e password.
+// Accesso e salvataggio online: si entra con email e password, poi diario e foto vanno sul server da soli.
 // Il telefono resta la copia che si usa; qui si allineano le due.
 (function () {
   const URL_DATI = "https://fwwzqbelrfdstlsgtwrf.supabase.co/functions/v1/dati";
@@ -95,9 +95,10 @@
   // ---------- Giro completo ----------
   const stato = text => { $("c-state").textContent = text; };
   const avviso = text => { $("c-msg").textContent = text; $("c-msg").hidden = !text; };
+  // Senza accesso si vede solo la schermata di accesso.
   function mostra() {
     const c = conto();
-    $("c-login").hidden = !!c; $("c-in").hidden = !c;
+    document.body.classList.toggle("fuori", !c);
     if (c) $("c-who").textContent = c.email;
   }
   async function allinea() {
@@ -121,7 +122,7 @@
     } catch (e) {
       ancora = false;
       if (!stessoConto()) return;
-      if (e.status === 401) { write("nuvola", null); mostra(); avviso(e.message); return; }
+      if (e.status === 401) { esci(e.message); return; }
       stato("Da salvare");
       avviso(e.status === 0 ? "Sei senza rete: salvo appena torna." : e.message || "Salvataggio non riuscito, riprovo più tardi.");
     } finally {
@@ -140,30 +141,77 @@
     tolta(id) { write("tolte", [...new Set([...tolte(), id])]); cambia(); }
   };
 
-  $("c-login").onsubmit = async e => {
-    e.preventDefault();
-    const email = $("c-email").value.trim(), password = $("c-pass").value;
-    if (!email || password.length < 8) return avviso("Scrivi email e una password di almeno 8 caratteri.");
-    $("c-go").disabled = true; avviso("Un momento…");
+  // ---------- Accesso e registrazione ----------
+  const PAGINE = {
+    login: ["Bentornata", "La tua pianta ti aspetta."],
+    signup: ["Crea il tuo account", "Un minuto, poi foto e diario si salvano da soli."],
+    lost: ["Password dimenticata", "Si può rimettere a posto."]
+  };
+  let pagina = "login", aperte = true;
+  const dici = text => { $("g-msg").textContent = text; $("g-msg").hidden = !text; };
+  function iscrizioni() {
+    $("g-to-signup").disabled = !aperte;
+    $("g-to-signup").innerHTML = aperte ? "Non hai un account?<br>Registrati" : "Iscrizioni<br>chiuse";
+  }
+  function apri(quale, text = "") {
+    pagina = quale;
+    [$("g-title").textContent, $("g-sub").textContent] = PAGINE[quale];
+    for (const p of Object.keys(PAGINE)) $("g-" + p).hidden = p !== quale;
+    $("g-to-signup").hidden = $("g-to-lost").hidden = quale !== "login";
+    $("g-to-login").hidden = quale === "login";
+    $("g-to-login").innerHTML = quale === "lost" ? "Torna all’accesso" : "Hai già un account?<br>Accedi";
+    for (const i of ["g-pass", "r-pass", "r-again"]) { $(i).value = ""; $(i).type = "password"; }
+    document.querySelectorAll(".g-show").forEach(x => { x.checked = false; });
+    dici(text); iscrizioni(); $("accesso").scrollTop = 0;
+  }
+  async function chiedi() {
+    try { aperte = (await server("registrazioni")).aperte !== false; iscrizioni(); }
+    catch (e) { /* senza rete lo dirà il server quando si prova */ }
+  }
+  function esci(text) {
+    write("nuvola", null); clearTimeout(timer); mostra(); apri("login", text); chiedi();
+  }
+  async function entra(form, azione, email, password) {
+    const go = form.querySelector("[type=submit]");
+    if (go.disabled) return;
+    go.disabled = true; dici("Un momento…");
     try {
-      const r = await server("entra", { email, password });
+      const r = await server(azione, { email, password });
       write("nuvola", { token: r.token, email: r.email });
-      $("c-pass").value = ""; avviso(""); mostra();
+      document.activeElement?.blur(); apri("login"); window.go("oggi"); avviso(""); mostra();
       navigator.storage?.persist?.().catch(() => {});
       allinea();
-    } catch (x) { avviso(x.message); }
-    $("c-go").disabled = false;
+    } catch (x) { dici(x.message); if (azione === "registrati") chiedi(); }
+    go.disabled = false;
+  }
+  $("g-login").onsubmit = e => {
+    e.preventDefault();
+    const email = $("g-email").value.trim(), password = $("g-pass").value;
+    if (!email || !password) return dici("Scrivi email e password.");
+    entra(e.target, "entra", email, password);
   };
-  $("c-show").onchange = () => { $("c-pass").type = $("c-show").checked ? "text" : "password"; };
+  $("g-signup").onsubmit = e => {
+    e.preventDefault();
+    const email = $("r-email").value.trim(), password = $("r-pass").value;
+    if (!/^\S+@\S+\.\S+$/.test(email)) return dici("Scrivi un indirizzo email valido.");
+    if (password.length < 8) return dici("La password deve avere almeno 8 caratteri.");
+    if (password !== $("r-again").value) return dici("Le due password non coincidono.");
+    entra(e.target, "registrati", email, password);
+  };
+  document.querySelectorAll(".g-show").forEach(x => x.onchange = () => {
+    x.form.querySelectorAll("input:not([type=checkbox]):not([type=email])").forEach(i => { i.type = x.checked ? "text" : "password"; });
+  });
+  for (const p of Object.keys(PAGINE)) { const b = $("g-to-" + p); if (b) b.onclick = () => { if (pagina !== p) apri(p); }; }
   $("c-now").onclick = allinea;
   $("c-out").onclick = () => {
     const c = conto(); if (!c) return;
     server("esci", { token: c.token }).catch(() => {});
-    write("nuvola", null); clearTimeout(timer); mostra(); avviso("Sei uscita. I dati restano su questo telefono.");
+    esci("Sei uscita. I dati restano su questo telefono.");
   };
   addEventListener("online", allinea);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) allinea(); });
   mostra();
+  if (!conto()) chiedi();
   // Parte quando tutta l'app è pronta.
   addEventListener("load", allinea);
 })();

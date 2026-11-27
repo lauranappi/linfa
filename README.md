@@ -25,9 +25,11 @@ PWA per la cura del bonsai, con un promemoria ogni giorno all'ora che scegli.
 
 ## Salvataggio online
 
-- Funzione `dati` sullo stesso progetto Supabase: un solo account (email ammessa inserita a mano nel database).
+- All'avvio si vede la schermata di accesso (Accedi, Registrati, Password dimenticata), senza email di conferma.
+- Funzione `dati` sullo stesso progetto Supabase: un solo account (email ammessa inserita a mano nel database);
+  dopo la prima registrazione le iscrizioni risultano chiuse.
 - Password salvata solo come hash; foto e diario in tabelle non esposte dall'API.
-- Password dimenticata: svuota `privato.account` e `privato.sessioni`, poi rientra dall'app scegliendone una nuova.
+- Password dimenticata: svuota `privato.account` e `privato.sessioni`, poi registrati di nuovo dall'app.
 
 ## Notifiche
 

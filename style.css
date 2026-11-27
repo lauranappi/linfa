@@ -126,3 +126,18 @@ p.mut{margin:0}
 .check{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;color:var(--mut)}
 .check input{width:20px;height:20px;margin:0;accent-color:var(--sap);color-scheme:dark}
 #c-state{font-weight:700;color:var(--sap)}#c-who{overflow-wrap:anywhere}
+/* Accesso e registrazione */
+#accesso{display:none}
+body.fuori>main,body.fuori>nav{display:none}
+body.fuori>#accesso{display:flex;flex-direction:column;gap:22px;position:relative;flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:20px 24px calc(32px + env(safe-area-inset-bottom))}
+#accesso>*{flex:none}
+.ramo{position:absolute;top:0;right:0;pointer-events:none}
+#accesso header{margin-top:auto;padding-top:96px}
+#accesso header p{margin:6px 0 0;font-size:15px}
+.card{margin-bottom:auto;padding:22px 20px;border-radius:30px 30px 30px 12px;background:var(--surf);display:flex;flex-direction:column;gap:14px}
+.card p{margin:0}
+.card .field small{font-size:12px}
+.alt{display:flex;justify-content:space-between;gap:14px}
+.alt button{min-height:44px;padding:0;background:none;color:var(--mut);font-size:13px;line-height:1.4;text-align:right}
+.alt button#g-to-signup,.alt button#g-to-login{color:var(--sap);text-decoration:underline;text-align:left}
+.alt button#g-to-signup:disabled{color:var(--mut);text-decoration:none}

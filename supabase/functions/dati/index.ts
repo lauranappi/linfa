@@ -28,7 +28,7 @@ function clean(d: any) {
   };
 }
 
-async function enter(d: any) {
+async function enter(d: any, nuovo: boolean) {
   const email = String(d.email ?? "").trim().toLowerCase(), password = String(d.password ?? "");
   if (!email || email.length > 200) return fail("Scrivi la tua email.");
   if (password.length < 8 || new TextEncoder().encode(password).length > 72) return fail("La password deve avere da 8 a 72 caratteri.");
@@ -38,17 +38,18 @@ async function enter(d: any) {
     if (t.n >= 10) return fail("Troppi tentativi: riprova tra un quarto d'ora.", 429);
     const wrong = async (msg: string) => { await tx`insert into privato.tentativi default values`; return fail(msg, 403); };
     const [acc] = await tx`select email, hash = extensions.crypt(${password}::text, hash) as ok from privato.account`;
-    if (!acc) {
-      // Il primo accesso crea l'account, solo per l'email ammessa.
+    if (nuovo) {
+      // Un solo account, e solo per l'email ammessa.
+      if (acc) return fail("Le iscrizioni sono chiuse.", 403);
       const [allowed] = await tx`select 1 from privato.ammesso where email = ${email}`;
-      if (!allowed) return await wrong("Questa email non è abilitata.");
+      if (!allowed) return await wrong("Le iscrizioni sono chiuse per questa email.");
       await tx`insert into privato.account (email, hash) values (${email}, extensions.crypt(${password}::text, extensions.gen_salt('bf', 10)))`;
-    } else if (acc.email !== email || !acc.ok) return await wrong("Email o password non corrette.");
+    } else if (!acc || acc.email !== email || !acc.ok) return await wrong("Email o password non corrette.");
     const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, "0")).join("");
     await tx`delete from privato.tentativi`;
     await tx`insert into privato.sessioni (token_hash) values (encode(extensions.digest(${token}::text, 'sha256'), 'hex'))`;
     await tx`delete from privato.sessioni where token_hash not in (select token_hash from privato.sessioni order by creata desc limit 10)`;
-    return reply({ token, email, nuovo: !acc });
+    return reply({ token, email });
   });
 }
 
@@ -62,7 +63,11 @@ async function handle(req: Request) {
   try { if (text.length > 3_000_000) throw 0; d = JSON.parse(text); if (!d || typeof d !== "object") throw 0; }
   catch { return fail("Richiesta non valida."); }
 
-  if (d.azione === "entra") return await enter(d);
+  if (d.azione === "registrazioni") {
+    const [r] = await sql`select count(*)::int as n from privato.account`;
+    return reply({ aperte: r.n === 0 });
+  }
+  if (d.azione === "entra" || d.azione === "registrati") return await enter(d, d.azione === "registrati");
 
   const token = String(d.token ?? "");
   const [session] = await sql`select token_hash from privato.sessioni where token_hash = encode(extensions.digest(${token}::text, 'sha256'), 'hex')`;
