@@ -5,7 +5,7 @@
   const sunday = d => d.getUTCDay() === 0;
   const md = d => d.toISOString().slice(5, 10);
   const TASKS = [
-    { id: "soil", icon: "drop", short: "Se è asciutta, bagna", group: "often", every: "Ogni sera", t: "Tocca la terra", d: "Se in superficie è asciutta, bagna bene e svuota il sottovaso.", on: () => true },
+    { id: "soil", icon: "drop", short: "Se è asciutta, bagna", group: "often", every: "Ogni giorno", t: "Tocca la terra", d: "Se in superficie è asciutta, bagna bene e svuota il sottovaso.", on: () => true },
     { id: "turn", icon: "turn", short: "Un quarto di giro", group: "often", every: "Ogni domenica", t: "Ruota il vaso", d: "Un quarto di giro, per una luce uniforme.", on: sunday },
     { id: "leaf", icon: "eye", short: "Parassiti e macchie", group: "often", every: "Una domenica sì e una no", t: "Controlla le foglie", d: "Cerca parassiti, macchie o tante foglie gialle.",
       on: d => sunday(d) && Math.round((d - utc("2026-11-29")) / DAY) % 14 === 0 },
@@ -25,4 +25,4 @@
   }
   const api = { TASKS, due, next };
   if (typeof module !== "undefined") module.exports = api; else root.Bonsai = api;
-})(this);
+})(globalThis);

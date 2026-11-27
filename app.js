@@ -100,12 +100,12 @@ function fillAbout() { $("p-since").value = read("dal"); $("p-since").max = toda
 $("p-since").onchange = () => { if (isDay($("p-since").value) && $("p-since").value <= today()) { write("dal", $("p-since").value); render(); } };
 window.reloadData = () => { done = read("done") || {}; fillAbout(); render(); };
 
+// Notifiche: il telefono si iscrive, il server (Supabase) manda il promemoria all'ora scelta.
+const SERVER = "https://fwwzqbelrfdstlsgtwrf.supabase.co/functions/v1/promemoria";
+const APIKEY = "sb_publishable_2tL_Nx-qeHqTcpSwhv8kOw_QQtEs0yu"; // chiavi pubbliche
+const VAPID = "BM75WCiy4PRFxva74vvPrAQs1EgjCwYETyy0YNUCYzSNKylnCN3tLBUlUrV4QL5KFfwPzugiwLkGl0z2X-wTG2I";
 const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const bytes = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
-async function makeKeys() {
-  const p = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
-  return { publicKey: b64(await crypto.subtle.exportKey("raw", p.publicKey)), privateKey: (await crypto.subtle.exportKey("jwk", p.privateKey)).d };
-}
 const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 const ios = /iPhone|iPad/.test(navigator.userAgent);
 const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
@@ -113,88 +113,118 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
 
 const say = text => { $("msg").textContent = text; $("msg").hidden = !text; };
 const ready = supported && !(ios && !standalone);
-let busy = false;
+const oraScelta = () => /^\d\d:\d\d$/.test(read("ora")) ? read("ora") : "19:00";
+let busy = false, giro = 0;
 
-// ok = il codice è già su GitHub (l'hai confermato tu, o è arrivata una notifica vera).
-function paint(on, ok) {
-  $("daily").checked = on;
-  $("try").disabled = !on;
-  $("out").hidden = !on || ok;
-  $("redo").hidden = !on || !ok;
-  if (on) $("cfg").value = JSON.stringify(read("config"));
+async function server(azione, dati) {
+  const stop = new AbortController(), attesa = setTimeout(() => stop.abort(), 15000);
+  try {
+    const r = await fetch(SERVER, { method: "POST", signal: stop.signal, headers: { "Content-Type": "application/json", apikey: APIKEY }, body: JSON.stringify({ azione, ...dati }) })
+      .catch(() => { throw new Error("Non riesco a collegarmi: controlla la connessione."); });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw Object.assign(new Error(j.errore || "Il server non risponde, riprova tra poco."), { status: r.status });
+    return j;
+  } finally { clearTimeout(attesa); }
 }
-async function forgetPush() {
-  write("ok", false);
-  $("copy").textContent = "Copia il codice";
-  try { await (await caches.open("linfa-state")).delete("push-ok"); } catch (e) {}
+const iscrizione = async () => (await navigator.serviceWorker.ready).pushManager.getSubscription();
+async function salva(sub) {
+  const { endpoint, keys } = sub.toJSON(), ora = oraScelta();
+  const r = await server("salva", { endpoint, p256dh: keys.p256dh, auth: keys.auth, ora, fuso: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  write("promemoria", { endpoint });
+  return "Il prossimo arriva " + r.prossima + " alle " + ora + ".";
 }
-// L'interruttore mostra lo stato vero: acceso solo se il telefono è iscritto.
+// Resti del vecchio sistema con il codice da copiare.
+function pulisci() {
+  try { localStorage.removeItem("linfa:config"); localStorage.removeItem("linfa:ok"); } catch (e) {}
+  window.caches?.delete("linfa-state").catch(() => {});
+}
+function paint(on) { $("daily").checked = on; $("try").disabled = !on; }
+function spento(text) { write("promemoria", null); paint(false); say(text); }
+// L'interruttore mostra lo stato vero: acceso solo se telefono e server sono d'accordo.
 async function refresh() {
   if (!ready || busy) return;
+  const mio = ++giro, vecchio = () => busy || mio !== giro;
   try {
-    const sub = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
-    const config = read("config");
-    const on = !!(config && sub && Notification.permission === "granted");
-    if (on && sub.endpoint !== config.subscription.endpoint) {
-      write("config", { ...config, subscription: sub.toJSON() });
-      await forgetPush();
+    const sub = await iscrizione(), saved = read("promemoria");
+    if (vecchio()) return;
+    if (!saved || !sub || Notification.permission !== "granted") {
+      paint(false);
+      if (read("config")) say("Ora il promemoria funziona senza codice: riaccendilo.");
+      return;
     }
-    if (await caches.match("push-ok")) write("ok", true);
-    if (!busy) paint(on, !!read("ok"));
-  } catch (e) {}
+    paint(true);
+    if (sub.endpoint !== saved.endpoint) { await salva(sub); return; }
+    const stato = await server("stato", { endpoint: sub.endpoint });
+    if (vecchio()) return;
+    if (!stato.attivo) return spento("Il promemoria si è spento: riaccendilo.");
+    write("ora", stato.ora); $("ora").value = stato.ora;
+  } catch (e) { /* senza rete resta quello che c'è */ }
 }
 async function turnOn() {
   // La richiesta di permesso deve partire direttamente dal tocco.
   if (await Notification.requestPermission() !== "granted") throw new Error("Le notifiche sono bloccate: abilitale in Impostazioni > Notifiche.");
   await navigator.serviceWorker.register("sw.js");
   const reg = await navigator.serviceWorker.ready;
-  let config = read("config"), sub = await reg.pushManager.getSubscription();
-  if (!config) {
-    if (sub) await sub.unsubscribe();
-    sub = null;
-    config = await makeKeys();
+  let sub = await reg.pushManager.getSubscription();
+  if (sub) {
+    const k = sub.options?.applicationServerKey;
+    // Un'iscrizione fatta con un'altra chiave va rifatta.
+    if (k ? b64(k) !== VAPID : read("promemoria")?.endpoint !== sub.endpoint) { await sub.unsubscribe(); sub = null; }
   }
-  sub = sub || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytes(config.publicKey) });
-  const subscription = sub.toJSON();
-  if (config.subscription?.endpoint !== subscription.endpoint) await forgetPush();
-  config = { publicKey: config.publicKey, privateKey: config.privateKey, subscription };
-  const saved = write("config", config);
-  paint(true, !!read("ok"));
-  $("cfg").value = JSON.stringify(config);
-  if (!saved) { $("cfg").hidden = false; say("Copia subito il codice: non riesco a conservarlo."); }
+  sub = sub || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytes(VAPID) });
+  const quando = await salva(sub);
+  pulisci(); paint(true); say("Fatto. " + quando);
 }
 async function turnOff() {
-  const sub = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
-  if (sub) await sub.unsubscribe();
-  await forgetPush();
-  paint(false, false);
-  say("Promemoria spento. Se lo riaccendi, salva su GitHub il codice nuovo.");
+  const sub = await iscrizione();
+  if (sub) {
+    // Se il server non risponde, cancellerà il telefono al primo invio rifiutato.
+    await server("togli", { endpoint: sub.endpoint }).catch(() => {});
+    await sub.unsubscribe();
+  }
+  pulisci(); spento("Promemoria spento.");
+}
+async function lavora(fai, annulla) {
+  busy = true; giro++; $("daily").disabled = $("ora").disabled = true; say("");
+  try { await fai(); }
+  catch (e) { annulla?.(); say(e.name === "Error" ? e.message : "Qualcosa è andato storto, riprova."); }
+  finally { busy = false; $("daily").disabled = $("ora").disabled = false; }
 }
 
+$("ora").value = oraScelta();
 if (!ready) {
   say("Questo dispositivo non supporta le notifiche. Su iPhone installa prima l'app dalla schermata Home.");
 } else {
   $("daily").disabled = false;
   refresh();
 }
-$("daily").onchange = async () => {
+$("daily").onchange = () => {
   const wanted = $("daily").checked;
-  busy = true; $("daily").disabled = true; say("");
-  try { await (wanted ? turnOn() : turnOff()); }
-  catch (e) { $("daily").checked = !wanted; say(e.message || "Qualcosa è andato storto, riprova."); }
-  finally { busy = false; $("daily").disabled = false; }
+  lavora(wanted ? turnOn : turnOff, () => paint(!wanted));
 };
-$("got").onclick = () => { write("ok", true); say(""); paint(true, true); };
-$("redo").onclick = async () => { await forgetPush(); paint(true, false); };
+// La rotella dell'orario cambia più volte di fila: si salva quando si ferma.
+let attesaOra;
+$("ora").onchange = () => {
+  clearTimeout(attesaOra);
+  const valore = $("ora").value;
+  if (!valore) { $("ora").value = oraScelta(); return; }
+  attesaOra = setTimeout(() => {
+    const prima = oraScelta();
+    write("ora", valore);
+    if (!$("daily").checked) return;
+    lavora(async () => say(await salva(await iscrizione())), () => { write("ora", prima); $("ora").value = prima; });
+  }, 900);
+};
 $("try").onclick = async () => {
+  $("try").disabled = true; say("Invio la prova…");
   try {
-    const reg = await navigator.serviceWorker.ready;
-    await reg.showNotification("Prova", { body: "Le notifiche funzionano. Ti ricorderò come curare la pianta.", icon: "icon-192-v2.png", tag: "prova" });
-  } catch (e) { say("Prova non riuscita: " + e.message); }
-};
-$("copy").onclick = async () => {
-  try { await navigator.clipboard.writeText($("cfg").value); $("copy").textContent = "Copiato"; }
-  catch (e) { $("cfg").hidden = false; $("cfg").select(); say("Copia a mano il testo selezionato."); }
+    await server("prova", { endpoint: (await iscrizione()).endpoint });
+    say("Inviata: dovrebbe arrivare tra pochi secondi.");
+  } catch (e) {
+    if (e.status === 404 || e.status === 410) return spento(e.message);
+    say(e.name === "Error" ? e.message : "Prova non riuscita, riprova.");
+  }
+  $("try").disabled = !$("daily").checked;
 };
 fillAbout();
 paintSky();
@@ -229,4 +259,3 @@ async function aggiornaApp() {
   location.reload();
 }
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { render(); refresh(); paintSky(); if (location.hash === "#diario") Diario.show(); } });
-if (supported) navigator.serviceWorker.addEventListener("message", e => { if (e.data === "push-ok") refresh(); });

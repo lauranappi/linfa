@@ -81,15 +81,13 @@
 <a class="back" href="#pianta">Torna alla pianta</a>
 </section>
 <section data-view="notifiche" hidden>
-<header class="head"><span>Ogni sera</span><h1>Notifiche</h1></header>
+<header class="head"><span>Ogni giorno</span><h1>Notifiche</h1></header>
 <p id="msg" role="status" hidden></p>
 <div class="rows">
 <div class="row"><div><label for="daily">Promemoria giornaliero</label><small>Cosa fare per la pianta</small></div><span class="switch"><input id="daily" type="checkbox" role="switch" disabled><span></span></span></div>
-<div class="row"><div><strong>Orario promemoria</strong><small>Fisso, a volte in ritardo</small></div><span class="when">19:17</span></div>
-<div class="row"><div><strong>Prova</strong><small>Su questo telefono</small></div><button id="try" class="quiet" disabled>Invia una prova</button></div>
+<div class="row"><div><label for="ora">Orario promemoria</label><small>Scegli quando</small></div><input type="time" id="ora" value="19:00"></div>
+<div class="row"><div><strong>Prova</strong><small>Una notifica vera</small></div><button id="try" class="quiet" disabled>Invia una prova</button></div>
 </div>
-<div id="out" class="out" hidden><strong>Manca un passaggio</strong><span class="mut">Copia il codice e salvalo su GitHub nel secret PUSH_CONFIG. È privato: non condividerlo.</span><button id="copy" class="amber">Copia il codice</button><textarea id="cfg" readonly aria-label="Codice privato" hidden></textarea><button id="got" class="quiet">L'ho salvato su GitHub</button></div>
-<button id="redo" class="link" hidden>Mostra di nuovo il codice</button>
 <a class="back" href="#oggi">Torna a oggi</a>
 </section>
 </main>

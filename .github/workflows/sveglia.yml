@@ -1,0 +1,35 @@
+# Le notifiche partono da Supabase. Queste richieste evitano che il progetto gratuito vada in pausa.
+name: Tieni sveglio Linfa
+on:
+  schedule:
+    - cron: "23 5,11,17 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  sveglia:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Richieste al server
+        run: |
+          for i in 1 2 3; do
+            curl --fail --silent --show-error --max-time 30 \
+              -X POST https://fwwzqbelrfdstlsgtwrf.supabase.co/functions/v1/promemoria \
+              -H "Content-Type: application/json" \
+              -H "apikey: sb_publishable_2tL_Nx-qeHqTcpSwhv8kOw_QQtEs0yu" \
+              -d '{"azione":"ping"}'
+            echo
+            sleep 5
+          done
+      - uses: actions/checkout@v4
+        if: always()
+      # GitHub spegne le pianificazioni dei repository pubblici fermi da 60 giorni.
+      - name: Mantieni attivo il repository
+        if: always()
+        run: |
+          if [ $(( $(date +%s) - $(git log -1 --format=%ct) )) -gt $(( 45 * 86400 )) ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "Mantieni attive le pianificazioni"
+            git push
+          fi

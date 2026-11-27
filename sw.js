@@ -1,4 +1,4 @@
-const CACHE = "linfa-v8";
+const CACHE = "linfa-v9";
 const FILES = ["./", "index.html", "app.js", "base.js", "diario.js", "guide.js", "tasks.js", "icons.js", "style.css", "manifest.webmanifest", "icon-180-v2.png", "icon-192-v2.png"];
 self.addEventListener("install", e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, { cache: "reload" })))).then(() => self.skipWaiting())));
 self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
@@ -13,12 +13,7 @@ self.addEventListener("fetch", e => {
 self.addEventListener("push", e => {
   let m = {};
   try { m = e.data.json(); } catch (x) {}
-  e.waitUntil(Promise.all([
-    self.registration.showNotification(m.title || "Linfa", { body: m.body || "Dai un'occhiata alla pianta.", icon: "icon-192-v2.png", badge: "icon-192-v2.png", tag: "promemoria-giornaliero" }),
-    // Segna che il collegamento funziona: l'app nasconde la configurazione.
-    caches.open("linfa-state").then(c => c.put("push-ok", new Response("1")))
-      .then(() => self.clients.matchAll({ type: "window" })).then(l => l.forEach(w => w.postMessage("push-ok")))
-  ]));
+  e.waitUntil(self.registration.showNotification(m.title || "Linfa", { body: m.body || "Dai un'occhiata alla pianta.", icon: "icon-192-v2.png", badge: "icon-192-v2.png", tag: "promemoria-giornaliero" }));
 });
 self.addEventListener("notificationclick", e => {
   e.notification.close();

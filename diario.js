@@ -163,7 +163,7 @@
     paintPhotos();
   };
 
-  // ---------- Copia di sicurezza (senza il codice delle notifiche, che è privato) ----------
+  // ---------- Copia di sicurezza (senza i dati delle notifiche) ----------
   const say = text => { $("b-msg").textContent = text; $("b-msg").hidden = !text; };
   const toData = blob => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(blob); });
   let copy = null, incoming = null;
