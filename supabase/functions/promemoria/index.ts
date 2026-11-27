@@ -29,11 +29,12 @@ async function keys() {
   return JSON.parse(r.valore);
 }
 
-async function push(s: Sub, body: string) {
+// iPhone aggiunge da sé "from Linfa": il titolo dice cosa fare, non il nome dell'app.
+async function push(s: Sub, title: string, body: string) {
   const k = await keys();
   await webpush.sendNotification(
     { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-    JSON.stringify({ title: "Linfa", body }),
+    JSON.stringify({ title, body }),
     { TTL: 12 * 3600, timeout: 10000, vapidDetails: { subject: SUBJECT, publicKey: k.publicKey, privateKey: k.privateKey } },
   );
 }
@@ -56,9 +57,11 @@ async function send() {
     returning i.endpoint, i.p256dh, i.auth, to_char(d.giorno, 'YYYY-MM-DD') as giorno`;
   let inviate = 0;
   await Promise.all(rows.map(async (r: any) => {
-    const body = (globalThis as any).Bonsai.due(r.giorno).map((t: any) => t.t).join(" · ");
-    if (!body) return;
-    try { await push(r, body); inviate++; }
+    const tasks = (globalThis as any).Bonsai.due(r.giorno);
+    if (!tasks.length) return;
+    const title = tasks.length === 1 ? tasks[0].t : tasks.length + " gesti per la pianta";
+    const body = tasks.length === 1 ? tasks[0].short : tasks.map((t: any) => t.t).join(" · ");
+    try { await push(r, title, body); inviate++; }
     catch (e: any) {
       console.log("Invio fallito, codice", e?.statusCode ?? "rete");
       if (gone(e)) await remove(r.endpoint);
@@ -127,7 +130,7 @@ async function handle(req: Request) {
       const [there] = await sql`select 1 from privato.iscrizioni where endpoint = ${d.endpoint}`;
       return there ? fail("Aspetta qualche secondo e riprova.", 429) : fail("Il promemoria è spento: riaccendilo.", 404);
     }
-    try { await push(r as unknown as Sub, "Le notifiche funzionano. Ti ricorderò come curare la pianta."); }
+    try { await push(r as unknown as Sub, "Prova riuscita", "Ti ricorderò come curare la pianta."); }
     catch (e: any) {
       console.log("Prova fallita, codice", e?.statusCode ?? "rete");
       if (gone(e)) { await remove(d.endpoint); return fail("Il promemoria si è spento: riaccendilo.", 410); }
