@@ -1,5 +1,5 @@
-const CACHE = "linfa-v13";
-const FILES = ["./", "index.html", "app.js", "base.js", "diario.js", "guide.js", "nuvola.js", "tasks.js", "icons.js", "style.css", "manifest.webmanifest", "icon-180-v2.png", "icon-192-v2.png"];
+const CACHE = "linfa-v14";
+const FILES = ["./", "index.html", "app.js", "base.js", "cure.js", "diario.js", "guide.js", "nuvola.js", "tasks.js", "icons.js", "style.css", "manifest.webmanifest", "icon-180-v2.png", "icon-192-v2.png"];
 self.addEventListener("install", e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, { cache: "reload" })))).then(() => self.skipWaiting())));
 self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
 // Prima la rete, la copia salvata solo se sei offline.

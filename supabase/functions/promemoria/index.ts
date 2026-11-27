@@ -49,15 +49,34 @@ function validEndpoint(v: unknown): v is string {
   } catch { return false; }
 }
 
+// Telefono collegato all'account: solo ciò che resta da fare, promemoria personali compresi,
+// e niente se è via. Gli altri ricevono il calendario di base.
+function toDo(day: string, data: any): any[] {
+  const B = (globalThis as any).Bonsai;
+  if (!data) return B.due(day);
+  return B.away(data, day) ? [] : B.agenda(day, data).todo.map((x: any) => x.task);
+}
+// Vero se chi scrive ha fatto l'accesso.
+async function logged(token: unknown) {
+  if (typeof token !== "string" || !token || token.length > 200) return false;
+  const [s] = await sql`select 1 from privato.sessioni where token_hash = encode(extensions.digest(${token}::text, 'sha256'), 'hex')`;
+  return !!s;
+}
+
+async function link(d: any) {
+  if (await logged(d.token)) await sql`update privato.iscrizioni set collegata = true where endpoint = ${d.endpoint}`;
+}
+
 async function send() {
   // Prima segna come inviato, così due giri insieme non mandano doppioni.
   const rows = await sql`
     update privato.iscrizioni i set inviata = d.giorno from privato.da_inviare d
     where i.endpoint = d.endpoint and i.inviata is distinct from d.giorno
-    returning i.endpoint, i.p256dh, i.auth, to_char(d.giorno, 'YYYY-MM-DD') as giorno`;
+    returning i.endpoint, i.p256dh, i.auth, i.collegata, to_char(d.giorno, 'YYYY-MM-DD') as giorno`;
+  const [diario] = rows.length ? await sql`select dati from privato.diario` : [];
   let inviate = 0;
   await Promise.all(rows.map(async (r: any) => {
-    const tasks = (globalThis as any).Bonsai.due(r.giorno);
+    const tasks = toDo(r.giorno, r.collegata ? diario?.dati : null);
     if (!tasks.length) return;
     const title = tasks.length === 1 ? tasks[0].t : tasks.length + " gesti per la pianta";
     const body = tasks.length === 1 ? tasks[0].short : tasks.map((t: any) => t.t).join(" · ");
@@ -111,9 +130,11 @@ async function handle(req: Request) {
       on conflict (endpoint) do update set p256dh = excluded.p256dh, auth = excluded.auth,
         ora = excluded.ora, fuso = excluded.fuso, inviata = excluded.inviata
       returning inviata is null as oggi`;
+    await link(d);
     return reply({ prossima: r.oggi ? "oggi" : "domani" });
   }
   if (d.azione === "stato") {
+    await link(d);
     const [r] = await sql`select to_char(ora, 'HH24:MI') as ora from privato.iscrizioni where endpoint = ${d.endpoint}`;
     return reply(r ? { attivo: true, ora: r.ora } : { attivo: false });
   }

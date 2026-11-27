@@ -117,12 +117,13 @@
   let tab = "acqua";
   function show(next) {
     if (next) tab = next;
-    for (const t of ["acqua", "foto"]) { $("tab-" + t).setAttribute("aria-pressed", t === tab); $("panel-" + t).hidden = t !== tab; }
-    if (tab === "acqua") paintWater(); else paintPhotos();
+    for (const t of ["acqua", "foto", "cure"]) { $("tab-" + t).setAttribute("aria-pressed", t === tab); $("panel-" + t).hidden = t !== tab; }
+    if (tab === "acqua") paintWater(); else if (tab === "foto") paintPhotos(); else window.Cure.history();
   }
 
   $("tab-acqua").onclick = () => show("acqua");
   $("tab-foto").onclick = () => { open = null; show("foto"); };
+  $("tab-cure").onclick = () => { window.Cure.closeForms(); show("cure"); };
   $("w-now").onclick = () => { const d = today(); const undo = Acqua.get(d) === "w"; Acqua.set(d, undo ? null : "w"); if (undo) window.clearSoil?.(); else window.pour?.(); paintWater(); window.render?.(); };
   $("w-grid").onclick = e => {
     const b = e.target.closest("button[data-day]"); if (!b) return;

@@ -6,21 +6,23 @@ PWA per la cura del bonsai, con un promemoria ogni giorno all'ora che scegli.
 
 1. Repository > Settings > Pages > Deploy from a branch > `main`, cartella `/ (root)`.
 2. Su iPhone apri https://lauranappi.github.io/linfa/ in Safari > Condividi > Aggiungi alla schermata Home.
-3. Apri l'app **dall'icona**, tocca la campanella, accendi "Promemoria giornaliero", consenti e scegli l'orario.
+3. Apri l'app **dall'icona**, tocca la campanella, accendi "Promemoria", consenti e scegli l'orario.
 
 ## Cosa fa
 
 - **Oggi**: i gesti del giorno, il periodo dell'anno, "Qualcosa non va?".
-- **Diario**: annaffiature e foto.
-- **Calendario** e **La pianta**: ritmo delle cure, stagioni, "Se parti", salvataggio online.
+- **Diario**: annaffiature, foto e storico delle cure.
+- **Calendario**: ritmo delle cure e promemoria personali.
+- **La pianta**: stagioni e "Se parti", con la pausa dei promemoria quando sei via.
 - Testi delle guide in `guide.js`.
 
 ## Da sapere
 
-- Foto e diario stanno sul telefono; con "I tuoi dati" (La pianta) si salvano anche online.
+- Foto e diario stanno sul telefono e si salvano da soli anche online.
 
 - Frequenze: `tasks.js` (copialo anche in `supabase/functions/promemoria/` e ripubblica la funzione).
-- "Fatto" resta sul telefono e non ferma le notifiche.
+- Un telefono con l'accesso riceve il promemoria solo se resta qualcosa da fare e non si è via;
+  una cura saltata resta in elenco (e viene ricordata) per i giorni indicati in `tasks.js`.
 - Doppio tocco su "Oggi": ricarica l'app e prende la versione nuova.
 
 ## Salvataggio online

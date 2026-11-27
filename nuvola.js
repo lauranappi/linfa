@@ -20,17 +20,18 @@
     } finally { clearTimeout(attesa); }
   }
 
-  // ---------- Diario (annaffiature, gesti fatti, data di arrivo) ----------
-  const locale = () => ({ water: read("water") || {}, done: read("done") || {}, dal: read("dal") || null });
+  // ---------- Diario (annaffiature, cure, promemoria, viaggio, data di arrivo) ----------
+  const MAPPE = ["water", "done", "cure", "mie", "via"];
+  const locale = () => ({ ...Object.fromEntries(MAPPE.map(k => [k, read(k) || {}])), dal: read("dal") || null });
   const uguali = (a, b) => JSON.stringify(ordina(a)) === JSON.stringify(ordina(b));
   const ordina = o => o && typeof o === "object" ? Object.fromEntries(Object.keys(o).sort().map(k => [k, ordina(o[k])])) : o;
   // Unione a tre: quello che è cambiato qui rispetto all'ultima volta vince, il resto viene dall'altra parte.
   function unisci(prima, qui, la) {
     const out = {};
-    for (const campo of ["water", "done"]) {
+    for (const campo of MAPPE) {
       const b = prima?.[campo] || {}, l = qui[campo] || {}, s = la?.[campo] || {}, m = {};
       for (const k of new Set([...Object.keys(l), ...Object.keys(s)])) {
-        const v = l[k] !== b[k] ? l[k] : s[k];
+        const v = uguali(l[k], b[k]) ? s[k] : l[k];
         if (v !== undefined) m[k] = v;
       }
       out[campo] = m;
@@ -42,7 +43,7 @@
   }
   function scrivi(d) {
     applico = true;
-    write("water", d.water); write("done", d.done); if (d.dal) write("dal", d.dal);
+    MAPPE.forEach(k => write(k, d[k])); if (d.dal) write("dal", d.dal);
     applico = false;
   }
   async function diario(c) {
@@ -173,7 +174,7 @@
       write("nuvola", { token: r.token, email: r.email });
       document.activeElement?.blur(); apri("login"); window.go("oggi"); avviso(""); mostra();
       navigator.storage?.persist?.().catch(() => {});
-      allinea();
+      allinea(); window.refresh?.();
     } catch (x) { dici(x.message); if (azione === "registrati") chiedi(); }
     go.disabled = false;
   }

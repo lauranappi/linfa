@@ -78,7 +78,7 @@
     $("away-share").hidden = i === 0; $("away-share").textContent = "Condividi le istruzioni";
   }
   $("away-share").onclick = async () => {
-    const text = "Come curare il mio bonsai mentre non ci sono:\n• Ogni giorno o due tocca la terra: se in superficie è asciutta, bagna bene.\n• Svuota il sottovaso.\n• Tienila in un punto luminoso, lontana da termosifoni e sole forte.\n• Non concimare e non potare.\n• Lontana dalla portata degli animali.";
+    const text = "Come curare il mio bonsai mentre non ci sono:\n" + window.Cure.period() + "• Ogni giorno o due tocca la terra: se in superficie è asciutta, bagna bene.\n• Svuota il sottovaso.\n• Tienila in un punto luminoso, lontana da termosifoni e sole forte.\n• Non concimare e non potare.\n• Lontana dalla portata degli animali.";
     try {
       if (navigator.share) await navigator.share({ text });
       else { await navigator.clipboard.writeText(text); $("away-share").textContent = "Copiate"; }

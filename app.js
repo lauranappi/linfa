@@ -14,14 +14,14 @@ function item(k, sub, label) {
   info.append(text, el("span", label, "when")); li.append(node, info);
   return li;
 }
-const soilDone = day => !!Acqua.get(day) || done.soil === day;
-const isDone = (k, day) => k.id === "soil" ? soilDone(day) : done[k.id] === day;
 window.clearSoil = () => { delete done.soil; write("done", done); };
 
-function action(k, day) {
-  const ok = isDone(k, day), soil = k.id === "soil", card = el("div", "", (ok ? "action done" : "action") + (soil && !ok ? " ask" : "")), text = el("div");
+function action(k, day, ok, from) {
+  const soil = k.id === "soil", card = el("div", "", (ok ? "action done" : "action") + (soil && !ok ? " ask" : "")), text = el("div");
   const said = soil && Acqua.get(day) === "w" ? "Annaffiata oggi" : soil && Acqua.get(day) === "u" ? "Controllata: era umida" : "Fatto oggi";
-  text.append(el("strong", k.t), el("span", ok ? said : k.short));
+  const late = !ok && from < day ? daysBetween(from, day) : 0;
+  const sub = ok ? said : (late ? (late === 1 ? "Da ieri · " : "Da " + late + " giorni · ") : "") + k.short;
+  text.append(el("strong", k.t), el("span", sub));
   card.append(text);
   const button = (label, aria, run) => { const b = el("button", label); b.type = "button"; b.setAttribute("aria-label", aria); b.onclick = run; return b; };
   const mark = r => () => { Acqua.set(day, r); done.soil = day; write("done", done); render(); if (r === "w") pour(); };
@@ -33,26 +33,31 @@ function action(k, day) {
     card.append(button(ok ? "Annulla" : "Fatto", (ok ? "Annulla: " : "Fatto: ") + k.t, () => {
       if (soil) Acqua.set(day, null);
       if (ok) delete done[k.id]; else done[k.id] = day;
-      write("done", done); render();
+      write("done", done); Cure.log(k, day, !ok); render();
     }));
   }
   return card;
 }
 function render() {
-  const day = today(), noon = noonOf(day), due = Bonsai.due(day);
+  const day = today(), data = Cure.data(), { todo, fatti } = Bonsai.agenda(day, data);
   const together = Math.max(1, daysBetween(read("dal") || day, day) + 1);
   $("date").textContent = new Date().toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" }).replace(/^./, c => c.toUpperCase()) + " · insieme da " + (together === 1 ? "1 giorno" : together + " giorni");
-  const open = due.filter(k => !isDone(k, day)).length;
+  const open = todo.length;
   $("hello").textContent = !open ? "Per oggi è tutto." : open === 1 ? "Un gesto per lei." : open + " gesti per lei.";
-  $("today").replaceChildren(...due.map(k => action(k, day)));
+  // La terra resta in cima, poi le altre cure nell'ordine del calendario.
+  const cards = [...todo.map(x => ({ k: x.task, ok: false, from: x.from })), ...fatti.map(k => ({ k, ok: true }))]
+    .sort((a, b) => (b.k.id === "soil") - (a.k.id === "soil"));
+  $("today").replaceChildren(...cards.map(c => action(c.k, day, c.ok, c.from)));
   $("now-title").textContent = Guide.now().t; $("now-sub").textContent = Guide.now().short;
-  const upcoming = Bonsai.TASKS.filter(k => !due.includes(k)).map(k => ({ k, n: Bonsai.next(k, day) })).sort((a, b) => a.n - b.n);
+  const shown = new Set(cards.map(c => c.k.id));
+  const upcoming = Bonsai.all(data).filter(k => !shown.has(k.id)).map(k => ({ k, n: Bonsai.next(k, data, day) })).sort((a, b) => a.n - b.n);
   $("soon").replaceChildren(...upcoming.slice(0, 2).map(x => item(x.k, x.k.short, when(x.n, day))));
   for (const group of ["often", "season"]) {
     const list = Bonsai.TASKS.filter(k => k.group === group)
-      .map(k => ({ k, n: due.includes(k) ? noon : Bonsai.next(k, day) })).sort((a, b) => a.n - b.n);
+      .map(k => ({ k, n: todo.some(x => x.task.id === k.id) ? noonOf(day) : Bonsai.next(k, data, day) })).sort((a, b) => a.n - b.n);
     $(group).replaceChildren(...list.map(x => item(x.k, x.k.every, when(x.n, day))));
   }
+  Cure.mine(); Cure.banner();
 }
 // Pagine interne: nel menu resta accesa la scheda da cui partono.
 const PARENT = { aiuto: "pianta", stagione: "pianta", parti: "pianta" };
@@ -64,7 +69,8 @@ function route() {
   if (name === "diario") Diario.show();
   if (name === "aiuto") Guide.help();
   if (name === "stagione") Guide.season();
-  if (name === "parti") Guide.away();
+  if (name === "parti") { Guide.away(); Cure.away(); }
+  Cure.closeForms();
   document.querySelector("main").scrollTop = 0;
 }
 window.go = name => { history.replaceState(null, "", "#" + name); route(); };
@@ -129,7 +135,7 @@ async function server(azione, dati) {
 const iscrizione = async () => (await navigator.serviceWorker.ready).pushManager.getSubscription();
 async function salva(sub) {
   const { endpoint, keys } = sub.toJSON(), ora = oraScelta();
-  const r = await server("salva", { endpoint, p256dh: keys.p256dh, auth: keys.auth, ora, fuso: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  const r = await server("salva", { endpoint, token: read("nuvola")?.token, p256dh: keys.p256dh, auth: keys.auth, ora, fuso: Intl.DateTimeFormat().resolvedOptions().timeZone });
   write("promemoria", { endpoint });
   return "Il prossimo arriva " + r.prossima + " alle " + ora + ".";
 }
@@ -154,7 +160,7 @@ async function refresh() {
     }
     paint(true);
     if (sub.endpoint !== saved.endpoint) { await salva(sub); return; }
-    const stato = await server("stato", { endpoint: sub.endpoint });
+    const stato = await server("stato", { endpoint: sub.endpoint, token: read("nuvola")?.token });
     if (vecchio()) return;
     if (!stato.attivo) return spento("Il promemoria si è spento: riaccendilo.");
     write("ora", stato.ora); $("ora").value = stato.ora;

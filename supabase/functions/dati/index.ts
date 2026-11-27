@@ -17,15 +17,22 @@ const isDay = (s: unknown): s is string =>
   !isNaN(Date.parse(s + "T12:00:00Z")) && new Date(s + "T12:00:00Z").toISOString().startsWith(s);
 const isId = (s: unknown): s is string => typeof s === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(s);
 
-// Tiene solo i campi che l'app usa, nella forma attesa.
+// Tiene solo i campi che l'app usa, nella forma attesa. Deve accettare tutto ciò che l'app scrive.
 function clean(d: any) {
-  const map = (o: any, ok: (k: string, v: unknown) => boolean) =>
+  const map = (o: any, ok: (k: string, v: any) => boolean) =>
     Object.fromEntries(Object.entries(o && typeof o === "object" ? o : {}).filter(([k, v]) => ok(k, v)));
-  return {
+  const text = (s: unknown, max: number): s is string => typeof s === "string" && s.length <= max;
+  const kind = (s: unknown): s is string => typeof s === "string" && /^[a-z]{1,20}$/.test(s);
+  const out: Record<string, unknown> = {
     water: map(d?.water, (k, v) => isDay(k) && (v === "w" || v === "u")),
-    done: map(d?.done, (k, v) => /^[a-z]{1,20}$/.test(k) && isDay(v)),
+    done: map(d?.done, (k, v) => kind(k) && isDay(v)),
     dal: isDay(d?.dal) ? d.dal : null,
   };
+  // Se un'app non aggiornata non li manda, quelli salvati restano.
+  if (d?.cure) out.cure = map(d.cure, (k, v) => /^[a-z0-9-]{1,40}$/.test(k) && !!v && isDay(v.d) && kind(v.k) && text(v.t, 60) && text(v.n, 200));
+  if (d?.mie) out.mie = map(d.mie, (k, v) => kind(k) && !!v && text(v.t, 40) && v.t.length > 0 && Number.isInteger(v.n) && v.n >= 1 && v.n <= 365 && ["g", "s", "m"].includes(v.u) && isDay(v.dal));
+  if (d?.via) out.via = map(d.via, (k, v) => (k === "da" || k === "a") && isDay(v));
+  return out;
 }
 
 async function enter(d: any, nuovo: boolean) {
@@ -86,7 +93,7 @@ async function handle(req: Request) {
     if (!Number.isInteger(d.base)) return fail("Richiesta non valida.");
     const body = JSON.stringify(clean(d.dati));
     if (body.length > 300_000) return fail("Diario troppo grande.", 413);
-    const [r] = await sql`update privato.diario set dati = ${body}::text::jsonb, versione = versione + 1, aggiornato = now()
+    const [r] = await sql`update privato.diario set dati = dati || ${body}::text::jsonb, versione = versione + 1, aggiornato = now()
       where versione = ${d.base} returning versione`;
     return r ? reply({ versione: r.versione }) : fail("Il diario è cambiato nel frattempo.", 409);
   }
