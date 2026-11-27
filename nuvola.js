@@ -85,7 +85,6 @@
     const note = new Set([...online.map(p => p.id), ...daTogliere]);
     for (const p of qui.values()) {
       if (note.has(p.id) || tolte().includes(p.id)) continue;
-      stato("Salvo le foto…");
       const r = await server("carica", { token: c.token, id: p.id, day: p.day, note: p.note, img: await base64(p.buf) });
       if (r.tolta) { await Foto.cancella(p.id); cambiato = true; }
     }
@@ -93,20 +92,18 @@
   }
 
   // ---------- Giro completo ----------
-  const stato = text => { $("c-state").textContent = text; };
   const avviso = text => { $("c-msg").textContent = text; $("c-msg").hidden = !text; };
   // Senza accesso si vede solo la schermata di accesso.
   function mostra() {
     const c = conto();
     document.body.classList.toggle("fuori", !c);
-    if (c) $("c-who").textContent = c.email;
   }
   async function allinea() {
     clearTimeout(timer);
     if (corre) { ancora = true; return; }
     const c = conto();
     if (!c) return;
-    corre = true; ancora = false; stato("Salvo…");
+    corre = true; ancora = false;
     const mio = c.token, stessoConto = () => conto()?.token === mio;
     try {
       const d = await diario(c);
@@ -115,16 +112,13 @@
       if (d.cambiato) window.reloadData?.();
       const nuove = await foto(c, d.foto);
       if ((nuove || d.cambiato) && location.hash === "#diario") Diario.show();
-      c.quando = Date.now();
-      if (!stessoConto()) return;
-      write("nuvola", c); avviso("");
-      stato("Tutto salvato alle " + new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }));
+      if (stessoConto()) avviso("");
     } catch (e) {
       ancora = false;
       if (!stessoConto()) return;
       if (e.status === 401) { esci(e.message); return; }
-      stato("Da salvare");
-      avviso(e.status === 0 ? "Sei senza rete: salvo appena torna." : e.message || "Salvataggio non riuscito, riprovo più tardi.");
+      // Senza rete non serve dire niente: si salva appena torna. Gli altri problemi sì.
+      avviso(e.status === 0 ? "" : "Salvataggio online non riuscito. " + (e.message || ""));
     } finally {
       corre = false;
       if (ancora) cambia();
@@ -132,7 +126,6 @@
   }
   function cambia() {
     if (applico || !conto()) return;
-    stato("Da salvare");
     clearTimeout(timer); timer = setTimeout(allinea, 1500);
   }
   window.Nuvola = {
@@ -202,7 +195,6 @@
     x.form.querySelectorAll("input:not([type=checkbox]):not([type=email])").forEach(i => { i.type = x.checked ? "text" : "password"; });
   });
   for (const p of Object.keys(PAGINE)) { const b = $("g-to-" + p); if (b) b.onclick = () => { if (pagina !== p) apri(p); }; }
-  $("c-now").onclick = allinea;
   $("c-out").onclick = () => {
     const c = conto(); if (!c) return;
     server("esci", { token: c.token }).catch(() => {});

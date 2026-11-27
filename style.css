@@ -125,7 +125,6 @@ p.mut{margin:0}
 .login{display:flex;flex-direction:column;gap:12px}.login[hidden]{display:none}
 .check{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;color:var(--mut)}
 .check input{width:20px;height:20px;margin:0;accent-color:var(--sap);color-scheme:dark}
-#c-state{font-weight:700;color:var(--sap)}#c-who{overflow-wrap:anywhere}
 /* Accesso e registrazione */
 #accesso{display:none}
 body.fuori>main,body.fuori>nav{display:none}
